@@ -17,7 +17,7 @@ java {
 
 configurations {
     compileOnly {
-        extendsFrom(configurations.annotationProcessor.get())
+        extendsFrom annotationProcessor
     }
 }
 
@@ -31,8 +31,9 @@ repositories {
     }
 }
 
-extra["springAiVersion"] = "2.0.0-SNAPSHOT"
-
+ext {
+    springAiVersion = "2.0.0-SNAPSHOT"
+}
 dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${property("springAiVersion")}")
