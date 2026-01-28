@@ -9,15 +9,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.test.StepVerifier;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@Import(TestcontainersConfiguration.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @AutoConfigureWebTestClient(timeout="120s")
 class BotApplicationTests {
@@ -31,30 +34,40 @@ class BotApplicationTests {
     @Test
     @DisplayName("FAQ 게시글 초기화 테스트")
     void t1() {
-        // given
-        String keyword = "배송";
-
-        // when
-        List<Faq> results = faqService.searchFaq(keyword);
-
-        // then
-        assertFalse(results.isEmpty());
-        assertTrue(results.stream().anyMatch(f ->
-                f.getQuestion().contains("배송") || f.getAnswer().contains("배송")));
-        System.out.println("FTS 검색 결과:");
-        results.forEach(System.out::println);
+        StepVerifier.create(faqRepository.count())
+                .assertNext(count -> {
+                    System.out.println("FAQ 게시글 수: " + count);
+                    assertTrue(count >= 1);
+                })
+                .verifyComplete();
     }
 
     @Test
     @DisplayName("PGroonga FTS 검색 테스트")
     void t2() {
+        StepVerifier.create(faqRepository.searchByKeyword("배송").collectList())
+                .assertNext(results -> {
+                    assertFalse(results.isEmpty());
+                    assertTrue(results.stream()
+                            .anyMatch(faq -> faq.getQuestion().contains("배송") || faq.getAnswer().contains("배송")));
+                    System.out.println("FTS 검색 결과:");
+                    results.forEach(System.out::println);
+                })
+                .verifyComplete();
+
+    }
+
+    @Test
+    @DisplayName("FaqService searchFaq 테스트")
+    void t2_service() {
         List<Faq> results = faqService.searchFaq("배송");
         assertFalse(results.isEmpty());
         assertTrue(results.stream()
                 .anyMatch(faq -> faq.getQuestion().contains("배송") || faq.getAnswer().contains("배송")));
-        System.out.println("FTS 검색 결과:");
+        System.out.println("FaqService 검색 결과:");
         results.forEach(System.out::println);
     }
+
 
     @Test
     @DisplayName("Ai Controller 테스트")
@@ -77,6 +90,36 @@ class BotApplicationTests {
                     System.out.println("AI 응답: " + response);
                 })
                 .block();
+    }
+
+
+    @Test
+    @DisplayName("FAQ 저장 테스트")
+    void t4() {
+        Faq newFaq = Faq.builder()
+                .question("테스트 질문입니다")
+                .answer("테스트 답변입니다")
+                .build();
+
+        StepVerifier.create(faqRepository.save(newFaq))
+                .assertNext(saved -> {
+                    assertNotNull(saved.getId());
+                    assertEquals("테스트 질문입니다", saved.getQuestion());
+                    assertEquals("테스트 답변입니다", saved.getAnswer());
+                    System.out.println("저장된 FAQ: " + saved);
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("FAQ 전체 조회 테스트")
+    void t5() {
+        StepVerifier.create(faqRepository.findAll().collectList())
+                .assertNext(faqs -> {
+                    assertFalse(faqs.isEmpty());
+                    System.out.println("전체 FAQ 수: " + faqs.size());
+                })
+                .verifyComplete();
 
     }
 }

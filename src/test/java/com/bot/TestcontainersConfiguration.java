@@ -9,7 +9,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
-    @Value("${DATABSE_USERNAME}")
+    @Value("${DATABASE_USERNAME}")
     private String username;
     @Value("${DATABASE_PASSWORD}")
     private String password;
@@ -20,12 +20,10 @@ public class TestcontainersConfiguration {
     @ServiceConnection
     PostgreSQLContainer postgresContainer() {
         return new PostgreSQLContainer(DockerImageName
-                .parse("groonga/pgroonga:latest-alpine-18-slim")
+                .parse("groonga/pgroonga:latest-alpine-17-slim")
                 .asCompatibleSubstituteFor("postgres"))
                 .withDatabaseName(databaseName)
                 .withUsername(username)
                 .withPassword(password);
-
-
     }
 }
